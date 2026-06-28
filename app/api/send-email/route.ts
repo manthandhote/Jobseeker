@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { createClient } from "@/lib/supabase/server";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,13 +13,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { to_email, job_title, company_name, job_posting_id } =
-      await request.json();
+    const { to_email, subject, body, job_posting_id } = await request.json();
 
     if (!to_email) {
-      return NextResponse.json({ error: "Recipient email required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Recipient email required" },
+        { status: 400 }
+      );
+    }
+    if (!subject?.trim() || !body?.trim()) {
+      return NextResponse.json(
+        { error: "Subject and message are required" },
+        { status: 400 }
+      );
     }
 
+    // Fetch profile (includes Gmail credentials) and default resume in parallel
     const [{ data: profile }, { data: resume }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", user.id).single(),
       supabase
@@ -32,71 +39,55 @@ export async function POST(request: NextRequest) {
         .single(),
     ]);
 
-    const senderName = profile?.full_name || user.email!.split("@")[0];
-    const senderEmail = user.email!;
-    const senderPhone = profile?.phone || "";
-    const linkedIn = profile?.linkedin_url || "";
-
-    const jobTitleStr = job_title || "the advertised position";
-    const companyStr = company_name || "your organisation";
-    const subject = `Application for ${jobTitleStr} – ${senderName}`;
-
-    const htmlBody = `<!DOCTYPE html>
-<html>
-<body style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#333;max-width:620px;margin:0 auto;padding:24px">
-  <p>Dear Hiring Manager,</p>
-
-  <p>
-    I hope this message finds you well. I am writing to express my keen interest
-    in the <strong>${jobTitleStr}</strong> opportunity at <strong>${companyStr}</strong>.
-    Having reviewed the job posting, I am confident that my skills and professional
-    experience align closely with the requirements of this role.
-  </p>
-
-  <p>
-    I am enthusiastic about the possibility of contributing to ${companyStr}'s
-    continued growth and success. Please find my resume attached for your review.
-  </p>
-
-  <p>
-    I would welcome the opportunity to discuss how my background can add value to
-    your team. Please feel free to reach out at your convenience — I am available
-    for a call or interview at a time that suits you.
-  </p>
-
-  <p>Thank you for your time and consideration. I look forward to hearing from you.</p>
-
-  <p>
-    Warm regards,<br/>
-    <strong>${senderName}</strong><br/>
-    ${senderEmail}${senderPhone ? `<br/>${senderPhone}` : ""}${
-      linkedIn
-        ? `<br/><a href="${linkedIn}" style="color:#2563EB">${linkedIn}</a>`
-        : ""
+    // Require Gmail credentials
+    if (!profile?.gmail_user || !profile?.gmail_app_password) {
+      return NextResponse.json(
+        {
+          error:
+            "Gmail not configured. Go to Profile → Email Settings and add your Gmail address and App Password.",
+        },
+        { status: 400 }
+      );
     }
-  </p>
-</body>
-</html>`;
+
+    const senderName = profile.full_name || user.email!.split("@")[0];
+
+    // Build an HTML version from the plain-text body:
+    // escape HTML, auto-link URLs, preserve line breaks.
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const linkified = escapeHtml(body).replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" style="color:#2563eb">$1</a>'
+    );
+    const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1f2937;white-space:pre-wrap">${linkified}</div>`;
+
+    // Build transporter with user's Gmail credentials
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: profile.gmail_user,
+        pass: profile.gmail_app_password,
+      },
+    });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const emailPayload: any = {
-      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
-      to: [to_email],
-      reply_to: senderEmail,
+    const mailOptions: any = {
+      from: `"${senderName}" <${profile.gmail_user}>`,
+      to: to_email,
       subject,
+      text: body,
       html: htmlBody,
     };
 
+    // Attach resume if available
     if (resume?.file_url) {
       try {
         const resumeRes = await fetch(resume.file_url);
         if (resumeRes.ok) {
-          const arrayBuffer = await resumeRes.arrayBuffer();
-          emailPayload.attachments = [
-            {
-              filename: resume.file_name,
-              content: Buffer.from(arrayBuffer),
-            },
+          const buffer = Buffer.from(await resumeRes.arrayBuffer());
+          mailOptions.attachments = [
+            { filename: resume.file_name, content: buffer },
           ];
         }
       } catch (e) {
@@ -104,13 +95,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data, error } = await resend.emails.send(emailPayload);
+    await transporter.sendMail(mailOptions);
 
-    if (error) {
-      console.error("Resend error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    // Log the send
     await supabase.from("email_logs").insert({
       user_id: user.id,
       job_posting_id: job_posting_id || null,
@@ -119,9 +106,23 @@ export async function POST(request: NextRequest) {
       status: "sent",
     });
 
-    return NextResponse.json({ success: true, email_id: data?.id });
-  } catch (error) {
-    console.error("Send email route error:", error);
-    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Send email error:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to send email";
+
+    // Friendly Gmail-specific errors
+    if (message.includes("Invalid login") || message.includes("Username and Password not accepted")) {
+      return NextResponse.json(
+        {
+          error:
+            "Gmail login failed. Make sure you entered a valid App Password (not your regular Gmail password). See Profile → Email Settings for instructions.",
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Briefcase, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { Briefcase, Mail, Lock, User, Eye, EyeOff, MailCheck } from "lucide-react";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +38,6 @@ export default function SignupPage() {
     }
 
     if (data.user) {
-      // Create profile row
       await supabase.from("profiles").upsert({
         id: data.user.id,
         full_name: fullName,
@@ -45,9 +45,40 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    toast.success("Account created! Redirecting…");
-    router.push("/dashboard");
-    router.refresh();
+
+    if (data.session) {
+      // Email confirmation is disabled — go straight in
+      toast.success("Account created! Welcome aboard.");
+      router.push("/dashboard");
+      router.refresh();
+    } else {
+      // Email confirmation is enabled — show instructions
+      setAwaitingConfirm(true);
+    }
+  }
+
+  if (awaitingConfirm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-slate-200 p-10 text-center">
+          <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <MailCheck className="w-7 h-7 text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Check your inbox</h2>
+          <p className="text-slate-500 text-sm leading-relaxed">
+            We sent a confirmation link to{" "}
+            <span className="font-medium text-slate-700">{email}</span>.
+            Click the link to activate your account, then come back to sign in.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block mt-6 text-blue-600 text-sm font-medium hover:underline"
+          >
+            Back to sign in →
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -4,6 +4,13 @@ export interface Profile {
   phone: string | null;
   linkedin_url: string | null;
   summary: string | null;
+  headline: string | null;
+  years_experience: string | null;
+  key_skills: string | null;
+  key_achievement: string | null;
+  portfolio_url: string | null;
+  gmail_user: string | null;
+  gmail_app_password: string | null;
   created_at: string;
   updated_at: string;
 }
