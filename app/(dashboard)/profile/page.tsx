@@ -702,32 +702,34 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Profile</h1>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto w-full">
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Profile</h1>
         <p className="text-slate-500 text-sm mt-1">Manage your personal info, resume, and experience.</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit flex-wrap">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === key
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </button>
-        ))}
+      {/* Tabs — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto scrollbar-none mb-5 sm:mb-6 -mx-4 sm:mx-0 px-4 sm:px-0">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit min-w-full sm:min-w-0">
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === key
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
         {activeTab === "personal" && <PersonalTab userId={userId} />}
         {activeTab === "resume" && <ResumeTab userId={userId} />}
         {activeTab === "experience" && <ExperienceTab userId={userId} />}

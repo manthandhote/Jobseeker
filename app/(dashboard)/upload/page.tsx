@@ -349,9 +349,9 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Upload Job Screenshot</h1>
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto w-full">
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Upload Job Screenshot</h1>
         <p className="text-slate-500 text-sm mt-1">
           Upload a screenshot of a job posting to extract contact details and send your application.
         </p>

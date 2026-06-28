@@ -184,20 +184,21 @@ export default function TodosPage() {
   const doneCount = todos.filter((t) => t.is_done).length;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto w-full">
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto w-full">
+      <div className="flex items-start justify-between mb-5 sm:mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Call List</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Call List</h1>
           <p className="text-slate-500 text-sm mt-1">
             Track recruiters you need to call.
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 sm:px-4 py-2 sm:py-2 rounded-xl flex items-center gap-2 transition-colors shadow-sm shadow-blue-200 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          Add manually
+          <span className="hidden sm:inline">Add manually</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 

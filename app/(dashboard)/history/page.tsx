@@ -18,61 +18,101 @@ export default async function HistoryPage() {
     .order("sent_at", { ascending: false });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Email History</h1>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto w-full">
+      <div className="mb-5 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Email History</h1>
         <p className="text-slate-500 text-sm mt-1">
           All application emails you&apos;ve sent through the app.
         </p>
       </div>
 
       {!logs || logs.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl py-20 text-center">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500 font-medium">No emails sent yet</p>
+        <div className="bg-white border border-slate-200 rounded-2xl py-16 sm:py-20 text-center shadow-sm">
+          <Mail className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+          <p className="text-slate-700 font-semibold">No emails sent yet</p>
           <p className="text-slate-400 text-sm mt-1">
             Upload a job screenshot and send your first application!
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 grid grid-cols-12 text-xs font-medium text-slate-500 uppercase tracking-wide">
-            <span className="col-span-5">Recipient</span>
-            <span className="col-span-4">Subject</span>
-            <span className="col-span-2">Sent</span>
-            <span className="col-span-1">Status</span>
-          </div>
-          <div className="divide-y divide-slate-100">
+        <>
+          {/* ── Mobile card list ── */}
+          <div className="sm:hidden bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm divide-y divide-slate-100">
             {logs.map((log) => (
-              <div key={log.id} className="px-5 py-4 grid grid-cols-12 gap-2 items-center hover:bg-slate-50 transition-colors">
-                <div className="col-span-5 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{log.to_email}</p>
-                  {log.job_postings && (
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                      {(log.job_postings as any).job_title} · {(log.job_postings as any).company_name}
-                    </p>
-                  )}
-                </div>
-                <div className="col-span-4 min-w-0">
-                  <p className="text-sm text-slate-600 truncate">{log.subject}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-xs text-slate-400">{formatDateTime(log.sent_at)}</p>
-                </div>
-                <div className="col-span-1">
-                  <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+              <div key={log.id} className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{log.to_email}</p>
+                    {log.job_postings && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(log.job_postings as any).job_title} ·{" "}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(log.job_postings as any).company_name}
+                      </p>
+                    )}
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full border border-green-100 shrink-0">
                     <CheckCircle2 className="w-3 h-3" />
                     {log.status}
                   </span>
                 </div>
+                <p className="text-xs text-slate-500 mt-2 line-clamp-2">{log.subject}</p>
+                <p className="text-xs text-slate-400 mt-1">{formatDateTime(log.sent_at)}</p>
               </div>
             ))}
           </div>
-          <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
-            {logs.length} email{logs.length !== 1 ? "s" : ""} sent total
+
+          {/* ── Tablet/Desktop table ── */}
+          <div className="hidden sm:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 grid grid-cols-12 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <span className="col-span-5">Recipient</span>
+              <span className="col-span-4">Subject</span>
+              <span className="col-span-2">Sent</span>
+              <span className="col-span-1">Status</span>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {logs.map((log) => (
+                <div
+                  key={log.id}
+                  className="px-5 py-4 grid grid-cols-12 gap-2 items-center hover:bg-slate-50 transition-colors"
+                >
+                  <div className="col-span-5 min-w-0">
+                    <p className="text-sm font-medium text-slate-800 truncate">{log.to_email}</p>
+                    {log.job_postings && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(log.job_postings as any).job_title} ·{" "}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(log.job_postings as any).company_name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="col-span-4 min-w-0">
+                    <p className="text-sm text-slate-600 truncate">{log.subject}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400">{formatDateTime(log.sent_at)}</p>
+                  </div>
+                  <div className="col-span-1">
+                    <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full border border-green-100">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {log.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 font-medium">
+              {logs.length} email{logs.length !== 1 ? "s" : ""} sent total
+            </div>
           </div>
-        </div>
+
+          {/* Mobile footer count */}
+          <p className="sm:hidden text-xs text-slate-400 text-center mt-3">
+            {logs.length} email{logs.length !== 1 ? "s" : ""} sent total
+          </p>
+        </>
       )}
     </div>
   );

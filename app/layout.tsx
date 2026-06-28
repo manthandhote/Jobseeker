@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   title: "JobSeeker Pro — Smart Job Application Assistant",
   description:
     "Upload job screenshots, extract contacts via OCR, send professional emails, and track your calls.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
