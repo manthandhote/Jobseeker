@@ -50,6 +50,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Send-rate limiting ──────────────────────────────────────
+    // Recipient mail servers (e.g. Hostinger) throttle bursts and bounce
+    // messages with "451 4.7.1 Ratelimit ... exceeded". Sending too fast
+    // can also get the user's Gmail account flagged. Space sends out using
+    // the user's own recent email_logs so we never create those bursts.
+    const RATE_LIMIT = {
+      minGapSeconds: 20, // minimum spacing between two sends
+      perMinute: 4, // max sends in any rolling 60s
+      perHour: 40, // max sends in any rolling 60m
+    };
+
+    const nowMs = Date.now();
+    const hourAgoIso = new Date(nowMs - 60 * 60 * 1000).toISOString();
+    const { data: recentLogs } = await supabase
+      .from("email_logs")
+      .select("sent_at")
+      .eq("user_id", user.id)
+      .eq("status", "sent")
+      .gte("sent_at", hourAgoIso)
+      .order("sent_at", { ascending: false });
+
+    const sentTimes = (recentLogs ?? [])
+      .map((l) => new Date(l.sent_at as string).getTime())
+      .filter((t) => !Number.isNaN(t));
+    const sentLastMinute = sentTimes.filter((t) => t > nowMs - 60_000).length;
+    const gapSeconds = sentTimes.length
+      ? (nowMs - sentTimes[0]) / 1000
+      : Infinity;
+
+    let retryAfter = 0;
+    if (gapSeconds < RATE_LIMIT.minGapSeconds) {
+      retryAfter = Math.ceil(RATE_LIMIT.minGapSeconds - gapSeconds);
+    } else if (sentLastMinute >= RATE_LIMIT.perMinute) {
+      retryAfter = 60;
+    } else if (sentTimes.length >= RATE_LIMIT.perHour) {
+      retryAfter = 15 * 60;
+    }
+
+    if (retryAfter > 0) {
+      const wait =
+        retryAfter >= 60
+          ? `${Math.ceil(retryAfter / 60)} minute(s)`
+          : `${retryAfter} seconds`;
+      return NextResponse.json(
+        {
+          error: `You're sending applications too quickly. To avoid recipient mail servers rate-limiting and bouncing your emails, please wait ${wait} before sending the next one.`,
+        },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
+
     const senderName = profile.full_name || user.email!.split("@")[0];
 
     // Build an HTML version from the plain-text body:
@@ -120,6 +171,23 @@ export async function POST(request: NextRequest) {
             "Gmail login failed. Make sure you entered a valid App Password (not your regular Gmail password). See Profile → Email Settings for instructions.",
         },
         { status: 400 }
+      );
+    }
+
+    // Rate-limit / throttling responses (SMTP 421/451, 4.7.x). Some servers
+    // reject synchronously instead of accepting and bouncing later.
+    if (
+      /\b4(21|50|51|52)\b/.test(message) ||
+      /rate ?limit/i.test(message) ||
+      message.includes("4.7.1") ||
+      message.includes("Too many")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The mail server is temporarily rate-limiting messages. Please wait a few minutes before sending more applications, then try again.",
+        },
+        { status: 429, headers: { "Retry-After": "300" } }
       );
     }
 
